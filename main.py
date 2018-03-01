@@ -42,12 +42,15 @@ learner_tasks.join()
 starting_weights = learner_results.get()
 rollouts.set_policy_weights(starting_weights)
 
+print("lol")
+
 start_time = time.time()
 history = {}
 history["rollout_time"] = []
 history["learn_time"] = []
 history["mean_reward"] = []
 history["timesteps"] = []
+history["maxkl"] = []
 
 # start it off with a big negative number
 last_reward = -1000000
@@ -66,6 +69,7 @@ while True:
     rollout_start = time.time()
     paths = rollouts.rollout()
     rollout_time = (time.time() - rollout_start) / 60.0
+    print("rollout = 0")
 
     # Why is the learner in an async process?
     # Well, it turns out tensorflow has an issue: when there's a tf.Session in the main thread

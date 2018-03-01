@@ -14,6 +14,7 @@ class Actor(multiprocessing.Process):
         self.result_q = result_q
         self.args = args
         self.monitor = monitor
+        print("actor_id: ", actor_id)
 
 
     def act(self, obs):
@@ -53,7 +54,7 @@ class Actor(multiprocessing.Process):
             device_count = {'GPU': 0}
         )
         self.session = tf.Session(config=config)
-        self.session.run(tf.initialize_all_variables())
+        self.session.run(tf.global_variables_initializer())
         var_list = tf.trainable_variables()
 
         self.set_policy = SetPolicyWeights(self.session, var_list)
@@ -91,6 +92,8 @@ class Actor(multiprocessing.Process):
             action_dists_mu.append(action_dist_mu)
             action_dists_logstd.append(action_dist_logstd)
             res = self.env.step(action)
+            if(i%25==0):
+              self.env.render()
             ob = list(filter(res[0]))
             rewards.append((res[1]))
             if res[2] or i == self.args.max_pathlength - 2:
@@ -123,9 +126,8 @@ class ParallelRollout():
         self.average_timesteps_in_episode = 1000
 
     def rollout(self):
-
         # keep 20,000 timesteps per update
-        num_rollouts = self.args.timesteps_per_batch / self.average_timesteps_in_episode
+        num_rollouts = int(self.args.timesteps_per_batch / self.average_timesteps_in_episode)
 
         for i in range(num_rollouts):
             self.tasks.put(1)
