@@ -27,17 +27,24 @@ parser.add_argument("--kl_adapt", type=float, default=0)
 args = parser.parse_args()
 args.max_pathlength = gym.spec(args.task).timestep_limit
 
+# Abstraction for parallelism inside of a single machine
+# TODO: what's the intuition behind this learner_tasks
 learner_tasks = multiprocessing.JoinableQueue()
 learner_results = multiprocessing.Queue()
 learner_env = gym.make(args.task)
 
+# Learner corresponds with the TRPO algorithm
 learner = TRPO(args, learner_env.observation_space, learner_env.action_space, learner_tasks, learner_results)
 learner.start()
+
+# Create the parallel rollouts, in other words Actors that execute rollouts when
+# each one of them gets called appropriately
 rollouts = ParallelRollout(args)
 
 learner_tasks.put(1)
 learner_tasks.join()
 starting_weights = learner_results.get()
+# Get the same weights in all workers (Actors as named here)
 rollouts.set_policy_weights(starting_weights)
 
 start_time = time.time()
@@ -65,7 +72,7 @@ while True:
     rollout_start = time.time()
     paths = rollouts.rollout()
     rollout_time = (time.time() - rollout_start) / 60.0
-    print("rollout = 0")
+    # print("rollout = 0")
 
     # Why is the learner in an async process?
     # Well, it turns out tensorflow has an issue: when there's a tf.Session in the main thread

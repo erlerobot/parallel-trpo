@@ -50,6 +50,8 @@ class TRPO(multiprocessing.Process):
         # log standard deviations for each actions
         self.action_dist_logstd = tf.tile(action_dist_logstd_param, tf.stack((tf.shape(self.action_dist_mu)[0], 1)))
 
+        # TODO: understand what's the purpose behind all of this math. Unclear.
+                
         batch_size = tf.shape(self.obs)[0]
         # what are the probabilities of taking self.action, given new and old distributions
         log_p_n = gauss_log_prob(self.action_dist_mu, self.action_dist_logstd, self.action)

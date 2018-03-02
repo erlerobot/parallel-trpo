@@ -7,6 +7,7 @@ import time
 import copy
 from random import randint
 
+# This could perfectly be renamed to worker
 class Actor(multiprocessing.Process):
     def __init__(self, args, task_q, result_q, actor_id, monitor):
         multiprocessing.Process.__init__(self)
@@ -16,16 +17,7 @@ class Actor(multiprocessing.Process):
         self.monitor = monitor
         print("actor_id: ", actor_id)
 
-
-    def act(self, obs):
-        obs = np.expand_dims(obs, 0)
-        action_dist_mu, action_dist_logstd = self.session.run([self.action_dist_mu, self.action_dist_logstd], feed_dict={self.obs: obs})
-        # samples the guassian distribution
-        act = action_dist_mu + np.exp(action_dist_logstd)*np.random.randn(*action_dist_logstd.shape)
-        return act.ravel(), action_dist_mu, action_dist_logstd
-
     def run(self):
-
         self.env = gym.make(self.args.task)
         self.env.seed(randint(0,999999))
         if self.monitor:
@@ -37,7 +29,8 @@ class Actor(multiprocessing.Process):
         self.hidden_size = 64
         weight_init = tf.random_uniform_initializer(-0.05, 0.05)
         bias_init = tf.constant_initializer(0)
-        # tensorflow model of the policy
+
+        # tensorflow model of the policy (observations x 64 x 64 x actions)
         self.obs = tf.placeholder(tf.float32, [None, self.observation_size])
         self.debug = tf.constant([2,2])
         with tf.variable_scope("policy-a"):
@@ -46,6 +39,7 @@ class Actor(multiprocessing.Process):
             h2 = fully_connected(h1, self.hidden_size, self.hidden_size, weight_init, bias_init, "policy_h2")
             h2 = tf.nn.relu(h2)
             h3 = fully_connected(h2, self.hidden_size, self.action_size, weight_init, bias_init, "policy_h3")
+            # h3 = tf.nn.sigmoid(h3)
             action_dist_logstd_param = tf.Variable((.01*np.random.randn(1, self.action_size)).astype(np.float32), name="policy_logstd")
         self.action_dist_mu = h3
         self.action_dist_logstd = tf.tile(action_dist_logstd_param, tf.stack((tf.shape(self.action_dist_mu)[0], 1)))
@@ -82,6 +76,13 @@ class Actor(multiprocessing.Process):
                 self.task_q.task_done()
         return
 
+    def act(self, obs):
+        obs = np.expand_dims(obs, 0)
+        action_dist_mu, action_dist_logstd = self.session.run([self.action_dist_mu, self.action_dist_logstd], feed_dict={self.obs: obs})
+        # samples the guassian distribution
+        act = action_dist_mu + np.exp(action_dist_logstd)*np.random.randn(*action_dist_logstd.shape)
+        return act.ravel(), action_dist_mu, action_dist_logstd
+
     def rollout(self):
         obs, actions, rewards, action_dists_mu, action_dists_logstd = [], [], [], [], []
         ob = list(filter(self.env.reset()))
@@ -92,7 +93,8 @@ class Actor(multiprocessing.Process):
             action_dists_mu.append(action_dist_mu)
             action_dists_logstd.append(action_dist_logstd)
             res = self.env.step(action)
-            if(i%25==0):
+            # Added for debugging purposes
+            if(i % 25==0):
               self.env.render()
             ob = list(filter(res[0]))
             rewards.append((res[1]))
@@ -108,30 +110,29 @@ class Actor(multiprocessing.Process):
 class ParallelRollout():
     def __init__(self, args):
         self.args = args
-
         self.tasks = multiprocessing.JoinableQueue()
         self.results = multiprocessing.Queue()
-
         self.actors = []
+
+        # First actor (thread) with ID 9999, ???
         self.actors.append(Actor(self.args, self.tasks, self.results, 9999, args.monitor))
 
+        # Subsequent actors (threads) with IDs that follow as 37*(i+3)
         for i in range(self.args.num_threads-1):
             self.actors.append(Actor(self.args, self.tasks, self.results, 37*(i+3), False))
 
+         # Start the threads
         for a in self.actors:
             a.start()
 
+        # TODO: this is not the case here
         # we will start by running 20,000 / 1000 = 20 episodes for the first ieration
-
-        self.average_timesteps_in_episode = 1000
+        self.average_timesteps_in_episode = 200
 
     def rollout(self):
-        # keep 20,000 timesteps per update
         num_rollouts = int(self.args.timesteps_per_batch / self.average_timesteps_in_episode)
-
         for i in range(num_rollouts):
             self.tasks.put(1)
-
         self.tasks.join()
 
         paths = []
@@ -139,7 +140,10 @@ class ParallelRollout():
             num_rollouts -= 1
             paths.append(self.results.get())
 
-        self.average_timesteps_in_episode = sum([len(path["rewards"]) for path in paths]) / len(paths)
+        # TODO: Don't understand why the alg. updates this value, breaks the parallelism depending on hyperparams
+        # TODO: review the paper and try to understand the logic of re-calculating rollout length
+        # self.average_timesteps_in_episode = sum([len(path["rewards"]) for path in paths]) / len(paths)
+        # print("changing self.average_timesteps_in_episode to: "+str(self.average_timesteps_in_episode))
         return paths
 
     def set_policy_weights(self, parameters):
