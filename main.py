@@ -20,7 +20,7 @@ parser.add_argument("--num_threads", type=int, default=5)
 parser.add_argument("--monitor", type=bool, default=False)
 
 # change these parameters for testing
-parser.add_argument("--decay_method", type=str, default="adaptive") # adaptive, none
+parser.add_argument("--decay_method", type=str, default="adaptive") # adaptive, adaptive-margin, none
 parser.add_argument("--timestep_adapt", type=int, default=0)
 parser.add_argument("--kl_adapt", type=float, default=0)
 
@@ -135,9 +135,9 @@ while True:
 
     print("Current steps is " + str(args.timesteps_per_batch) + " and KL is " + str(args.max_kl))
 
-    if iteration % 100 == 0:
-        with open("%s-%s-%f-%f-%f-%f" % (args.task, args.decay_method, starting_timesteps, starting_kl, args.timestep_adapt, args.kl_adapt), "w") as outfile:
-            json.dump(history,outfile)
+    # if iteration % 100 == 0:
+    #     with open("%s-%s-%f-%f-%f-%f" % (args.task, args.decay_method, starting_timesteps, starting_kl, args.timestep_adapt, args.kl_adapt), "w") as outfile:
+    #         json.dump(history,outfile)
 
     totalsteps += args.timesteps_per_batch
     print("%d total steps have happened" % totalsteps)
@@ -145,5 +145,4 @@ while True:
         break
 
     rollouts.set_policy_weights(new_policy_weights)
-
 rollouts.end()

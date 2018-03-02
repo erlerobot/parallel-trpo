@@ -18,6 +18,10 @@ class TRPO(multiprocessing.Process):
         self.observation_space = observation_space
         self.action_space = action_space
         self.args = args
+        self.summary_writer = tf.summary.FileWriter(
+                    "/tmp/experiments/MountainCarContinuous-v0/parallel-TRPO",
+                    graph=tf.get_default_graph())    # Create the writer for TensorBoard logs
+
 
     def makeModel(self):
         self.observation_size = self.observation_space.shape[0]
@@ -51,7 +55,7 @@ class TRPO(multiprocessing.Process):
         self.action_dist_logstd = tf.tile(action_dist_logstd_param, tf.stack((tf.shape(self.action_dist_mu)[0], 1)))
 
         # TODO: understand what's the purpose behind all of this math. Unclear.
-                
+
         batch_size = tf.shape(self.obs)[0]
         # what are the probabilities of taking self.action, given new and old distributions
         log_p_n = gauss_log_prob(self.action_dist_mu, self.action_dist_logstd, self.action)
@@ -200,6 +204,13 @@ class TRPO(multiprocessing.Process):
         # stats["Time elapsed"] = "%.2f mins" % ((time.time() - start_time) / 60.0)
         stats["KL between old and new distribution"] = kl_after
         stats["Surrogate loss"] = surrogate_after
+
+        timesteps = sum([len(path["rewards"]) for path in paths])
+        summary = tf.Summary(value=[tf.Summary.Value(tag="reward_mean", simple_value = episoderewards.mean())])
+        self.summary_writer.add_summary(summary, timesteps)
+        self.summary_writer.flush()
+
+
         # print ("\n********** Iteration {} ************".format(i))
         for k, v in stats.items():
             print(k + ": " + " " * (40 - len(k)) + str(v))

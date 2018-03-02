@@ -15,6 +15,11 @@ class Actor(multiprocessing.Process):
         self.result_q = result_q
         self.args = args
         self.monitor = monitor
+        self.summary_writer = tf.summary.FileWriter(
+            "/tmp/experiments/MountainCarContinuous-v0/parallel-TRPO",
+            graph=tf.get_default_graph())    # Create the writer for TensorBoard logs
+
+
         print("actor_id: ", actor_id)
 
     def run(self):
@@ -98,14 +103,26 @@ class Actor(multiprocessing.Process):
               self.env.render()
             ob = list(filter(res[0]))
             rewards.append((res[1]))
+
             if res[2] or i == self.args.max_pathlength - 2:
                 path = {"obs": np.concatenate(np.expand_dims(obs, 0)),
                              "action_dists_mu": np.concatenate(action_dists_mu),
                              "action_dists_logstd": np.concatenate(action_dists_logstd),
                              "rewards": np.array(rewards),
                              "actions":  np.array(actions)}
-                return path
                 break
+
+        # # Log things in tensorboard
+        # print("\t\t3")
+        # print("\t\tlogging in tensorboard")
+        # timesteps = len(rewards)
+        # summary = tf.Summary(value=[tf.Summary.Value(tag="reward_mean", simple_value = np.mean(rewards))])
+        # self.summary_writer.add_summary(summary, timesteps)
+        # self.summary_writer.flush()
+
+        return path
+
+
 
 class ParallelRollout():
     def __init__(self, args):
