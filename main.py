@@ -7,8 +7,6 @@ import argparse
 from rollouts import *
 import json
 
-
-
 parser = argparse.ArgumentParser(description='TRPO.')
 # these parameters should stay the same
 # parser.add_argument("--task", type=str, default='Reacher-v1')
@@ -41,8 +39,6 @@ learner_tasks.put(1)
 learner_tasks.join()
 starting_weights = learner_results.get()
 rollouts.set_policy_weights(starting_weights)
-
-print("lol")
 
 start_time = time.time()
 history = {}
