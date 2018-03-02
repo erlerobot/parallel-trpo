@@ -64,6 +64,11 @@ totalsteps = 0;
 starting_timesteps = args.timesteps_per_batch
 starting_kl = args.max_kl
 
+summary_writer = tf.summary.FileWriter(
+                    "/tmp/experiments/MountainCarContinuous-v0/parallel-TRPO",
+                    graph=tf.get_default_graph())    # Create the writer for TensorBoard logs
+
+
 iteration = 0
 while True:
     iteration += 1;
@@ -132,6 +137,11 @@ while True:
                     args.max_kl += args.kl_adapt
             last_reward = recent_total_reward
             recent_total_reward = 0
+
+    # timesteps = sum([len(path["rewards"]) for path in paths])
+    summary = tf.Summary(value=[tf.Summary.Value(tag="iteration_reward_mean", simple_value = mean_reward)])
+    summary_writer.add_summary(summary, iteration)
+    summary_writer.flush()
 
     print("Current steps is " + str(args.timesteps_per_batch) + " and KL is " + str(args.max_kl))
 

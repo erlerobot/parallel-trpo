@@ -15,9 +15,9 @@ class Actor(multiprocessing.Process):
         self.result_q = result_q
         self.args = args
         self.monitor = monitor
-        self.summary_writer = tf.summary.FileWriter(
-            "/tmp/experiments/MountainCarContinuous-v0/parallel-TRPO",
-            graph=tf.get_default_graph())    # Create the writer for TensorBoard logs
+        # self.summary_writer = tf.summary.FileWriter(
+        #     "/tmp/experiments/MountainCarContinuous-v0/parallel-TRPO",
+        #     graph=tf.get_default_graph())    # Create the writer for TensorBoard logs
 
 
         print("actor_id: ", actor_id)

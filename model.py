@@ -205,10 +205,10 @@ class TRPO(multiprocessing.Process):
         stats["KL between old and new distribution"] = kl_after
         stats["Surrogate loss"] = surrogate_after
 
-        timesteps = sum([len(path["rewards"]) for path in paths])
-        summary = tf.Summary(value=[tf.Summary.Value(tag="reward_mean", simple_value = episoderewards.mean())])
-        self.summary_writer.add_summary(summary, timesteps)
-        self.summary_writer.flush()
+        # timesteps = sum([len(path["rewards"]) for path in paths])
+        # summary = tf.Summary(value=[tf.Summary.Value(tag="reward_mean", simple_value = episoderewards.mean())])
+        # self.summary_writer.add_summary(summary, timesteps)
+        # self.summary_writer.flush()
 
 
         # print ("\n********** Iteration {} ************".format(i))
